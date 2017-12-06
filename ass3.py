@@ -79,6 +79,18 @@ def print_grid(grid):
     body_index_south = (tile_height-1)
     body_index_middle = body_index_south/2
 
+    format_body_north = "{{: ^{}.4}}|".format(tile_body_width)
+    format_body_south = format_body_north
+
+    format_body_middle_space = int((tile_body_width-3)/2)
+    format_body_middle_left = "{{: <{}.4}}".format(format_body_middle_space)
+    format_body_middle_center = "{: ^3}"
+    format_body_middle_right = "{{: >{}.4}}".format(format_body_middle_space)
+    format_body_middle = "{}{}{}|".format(format_body_middle_left,
+            format_body_middle_center,
+            format_body_middle_right)
+    print(format_body_middle)
+
     def print_end_line():
         print("")
 
@@ -93,11 +105,11 @@ def print_grid(grid):
             print("|", end ='')
             for _ in range(grid_columns):
                 if index_body_row == body_index_north:
-                    print("{}|".format('N'*(tile_body_width)), end='')
+                    print(format_body_north.format(1/3), end='')
                 elif index_body_row == body_index_middle:
-                    print("{}|".format('M'*(tile_body_width)), end='')
+                    print(format_body_middle.format(1/3, "A", 1/3), end='')
                 elif index_body_row == body_index_south:
-                    print("{}|".format('S'*(tile_body_width)), end='')
+                    print(format_body_south.format(1/3), end='')
                 else:
                     print("{}|".format(' '*(tile_body_width)), end='')
             print_end_line()
