@@ -96,7 +96,7 @@ def print_grid(grid):
     def print_end_line():
         print("")
 
-    def print_top():
+    def print_cap():
         print(" ", end='')
         for _ in range(grid_columns):
             print("{} ".format('-'*(tile_body_width)), end='')
@@ -127,12 +127,12 @@ def print_grid(grid):
             print_end_line()
 
     def print_row(index_row):
-        print_top()
+        print_cap()
         print_body(index_row)
 
     for index_row in range(grid_rows):
         print_row(index_row)
-    print_top()
+    print_cap()
 
 def main(args):
 
