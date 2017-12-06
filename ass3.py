@@ -9,7 +9,7 @@ import sys
 #           4, # Num columns.
 #           [[N,W,S,E],[...]], # Wall indices matrix.
 #           [[N,W,S,E],[...]], # Directional probabilities matrix.
-#           [x.xx,[...]],      # Sensor value matrix.
+#           [[N,W,S,E],[...]], # Sensor data values.
 #       ]
 
 
@@ -30,13 +30,16 @@ N=0; W=1; S=2; E=3
 # Data enumerations.
 grid_walls=2; grid_directional=3; grid_sensor=4
 
+current_view = grid_directional
+current_view = grid_sensor
+
 def grid_get(rows, columns):
 
     grid = [rows, columns]
     grid_wall_matrix = []
 
     grid_direction_probablities = [[[0.0]*4]*columns for _ in range(rows)]
-    grid_sensor_values = [[0.0]*columns for _ in range(rows)]
+    grid_sensor_values = [[[0.0]+[""]*3]*columns for _ in range(rows)]
 
     for index_row in range(rows):
         grid_wall_matrix_row = []
@@ -89,7 +92,6 @@ def print_grid(grid):
     format_body_middle = "{}{}{}|".format(format_body_middle_left,
             format_body_middle_center,
             format_body_middle_right)
-    print(format_body_middle)
 
     def print_end_line():
         print("")
@@ -100,23 +102,33 @@ def print_grid(grid):
             print("{} ".format('-'*(tile_body_width)), end='')
         print_end_line()
 
-    def print_body():
+    def print_body(index_row):
         for index_body_row in range(tile_height):
             print("|", end ='')
-            for _ in range(grid_columns):
+            for index_column in range(grid_columns):
+                tile_data = grid[current_view][index_row][index_column]
+
+                tile_val_north = tile_data[N]
+                tile_val_east = tile_data[E]
+                tile_val_south = tile_data[S]
+                tile_val_west = tile_data[W]
+
+                tile_status = ""
+
                 if index_body_row == body_index_north:
-                    print(format_body_north.format(1/3), end='')
+                    print(format_body_north.format(tile_val_north), end='')
                 elif index_body_row == body_index_middle:
-                    print(format_body_middle.format(1/3, "A", 1/3), end='')
+                    print(format_body_middle.format(tile_val_west, tile_status,
+                        tile_val_east), end='')
                 elif index_body_row == body_index_south:
-                    print(format_body_south.format(1/3), end='')
+                    print(format_body_south.format(tile_val_south), end='')
                 else:
                     print("{}|".format(' '*(tile_body_width)), end='')
             print_end_line()
 
     def print_row(index_row):
         print_top()
-        print_body()
+        print_body(index_row)
 
     for index_row in range(grid_rows):
         print_row(index_row)
