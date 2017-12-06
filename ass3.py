@@ -27,6 +27,8 @@ rep_tile = """
 
 # Heading enumerations.
 N=0; W=1; S=2; E=3
+# Data enumerations.
+grid_walls=2; grid_directional=3; grid_sensor=4
 
 def grid_get(rows, columns):
 
@@ -68,8 +70,14 @@ def print_grid(grid):
     tile_width = len(rep_tile.splitlines()[0])
     tile_height = len(rep_tile.splitlines())-2
 
+    tile_body_width = tile_width-1
+
     grid_rows = grid[0]
     grid_columns = grid[1]
+
+    body_index_north = 0
+    body_index_south = (tile_height-1)
+    body_index_middle = body_index_south/2
 
     def print_end_line():
         print("")
@@ -77,14 +85,21 @@ def print_grid(grid):
     def print_top():
         print(" ", end='')
         for _ in range(grid_columns):
-            print("{} ".format('-'*(tile_width-1)), end='')
+            print("{} ".format('-'*(tile_body_width)), end='')
         print_end_line()
 
     def print_body():
-        for _ in range(tile_height):
+        for index_body_row in range(tile_height):
             print("|", end ='')
-            for _ in range(grid_rows):
-                print("{}|".format(' '*(tile_width-1)), end='')
+            for _ in range(grid_columns):
+                if index_body_row == body_index_north:
+                    print("{}|".format('N'*(tile_body_width)), end='')
+                elif index_body_row == body_index_middle:
+                    print("{}|".format('M'*(tile_body_width)), end='')
+                elif index_body_row == body_index_south:
+                    print("{}|".format('S'*(tile_body_width)), end='')
+                else:
+                    print("{}|".format(' '*(tile_body_width)), end='')
             print_end_line()
 
     def print_row(index_row):
