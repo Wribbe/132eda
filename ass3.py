@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import random
 import sys
 
 # Grid structure:
@@ -8,7 +9,7 @@ import sys
 #           4, # Num rows.
 #           4, # Num columns.
 #           [[N,W,S,E],[...]], # Wall indices matrix.
-#           [[N,W,S,E],[...]], # Directional probabilities matrix.
+#           [[N,W,S,E],[...]], # Heading probabilities matrix.
 #           [[N,W,S,E],[...]], # Sensor data values.
 #       ]
 
@@ -28,17 +29,19 @@ rep_tile = """
 # Heading enumerations.
 N=0; W=1; S=2; E=3
 # Data enumerations.
-grid_walls=2; grid_directional=3; grid_sensor=4
+grid_walls=2; grid_headings=3; grid_sensor=4
 
-current_view = grid_directional
-current_view = grid_sensor
+current_view = grid_headings
+#current_view = grid_sensor
+
+grid = [[]]
 
 def grid_get(rows, columns):
 
     grid = [rows, columns]
     grid_wall_matrix = []
 
-    grid_direction_probablities = [[[0.0]*4]*columns for _ in range(rows)]
+    grid_heading_probablities = [[[0.0]*4]*columns for _ in range(rows)]
     grid_sensor_values = [[[0.0]+[""]*3]*columns for _ in range(rows)]
 
     for index_row in range(rows):
@@ -58,12 +61,15 @@ def grid_get(rows, columns):
 
     # Add wall matrix to grid data.
     grid.append(grid_wall_matrix)
-    # Add directional probabilities.
-    grid.append(grid_direction_probablities)
+    # Add heading probabilities.
+    grid.append(grid_heading_probablities)
     # Add sensor values.
     grid.append(grid_sensor_values)
 
     return grid
+
+def grid_wall_at(x, y, heading):
+    return grid[grid_walls][y][x][heading]
 
 def print_clear():
     print('\n'*200)
@@ -134,10 +140,59 @@ def print_grid(grid):
         print_row(index_row)
     print_cap()
 
+def robot_step(x, y, heading):
+
+    def new_coords(x, y, heading):
+        adjustments = {
+            N : (x, y-1),
+            E : (x+1, y),
+            S : (x, y+1),
+            W : (x-1, y),
+        }
+        return adjustments[heading]
+
+    return new_coords(x, y, heading)
+
+def robot_new_heading(x, y, heading):
+    if (robot_faces_wall(x, y, heading) or random.random() > 0.7):
+        available_headings = [h for h in [N,E,S,W] if not
+                robot_faces_wall(x, y, h)]
+        return random.choice(available_headings)
+    return heading
+
+def robot_faces_wall(x, y, heading):
+    return  grid_wall_at(x, y, heading)
+
+def robot_print_status(x, y, heading):
+    heading_string = {
+            N : "N",
+            E : "E",
+            S : "S",
+            W : "W",
+        }
+    print("({0},{1}:{2}) -- x: {0}, y:{1} heading: {2}.".format(x, y, heading_string[heading]))
+
 def main(args):
 
-    grid = grid_get(4,4)
+    global grid
+
+    grid_width = 4
+    grid_height = 4
+
+    grid = grid_get(grid_width, grid_height)
+
+    robot_pos_x = random.choice(range(0,grid_width))
+    robot_pos_y = random.choice(range(0,grid_height))
+    robot_heading = random.choice([N,W,S,E])
+
     print_grid(grid)
+    for _ in range(10):
+        robot_heading = robot_new_heading(robot_pos_x, robot_pos_y,
+                robot_heading)
+        robot_pos_x, robot_pos_y = robot_step(robot_pos_x, robot_pos_y,
+                robot_heading)
+        robot_print_status(robot_pos_x, robot_pos_y, robot_heading)
+    #robot_step()
 
 if __name__ == "__main__":
     main(sys.argv[1:])
