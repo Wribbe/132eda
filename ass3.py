@@ -166,6 +166,10 @@ def robot_step(x, y, heading):
 
 PROB_FACING = 0.7
 
+PROB_SENSOR_TRUE = 0.1
+PROB_SENSOR_L1 = 0.05
+PROB_SENSOR_L2 = 0.025
+
 def get_available_headings(x, y, heading):
     return [h for h in [N,E,S,W] if not robot_faces_wall(x, y, h)]
 
@@ -184,13 +188,14 @@ def robot_print_status(x, y, heading):
             S : "S",
             W : "W",
         }
-    print("({0},{1}:{2}) -- x: {0}, y:{1} heading: {2}.".format(x, y, heading_string[heading]))
+    print("ROBOT: ({0},{1}:{2}) -- x: {0}, y:{1} heading: {2}.".format(x, y,
+        heading_string[heading]))
 
 def get_next_tile_by_heading(grid, x, y, heading):
     new_x, new_y = robot_step(x, y, heading)
     return grid[new_y][new_x]
 
-def martix_get_transitions(grid, x, y, heading):
+def martix_get_prob_transitions(grid, x, y, heading):
     rows, cols = (grid[0], grid[1])
     matrix_trans = [ [[0.0]*4 for _ in range(cols) ] for _ in range(rows)]
     available_headings = get_available_headings(x, y, heading)
@@ -206,6 +211,41 @@ def martix_get_transitions(grid, x, y, heading):
         get_next_tile_by_heading(matrix_trans, x, y, h)[h] = prob_split
     return matrix_trans
 
+def matrix_get_coords_cicle(columns, rows, x, y, offset):
+    tile_list = set()
+    for outer_row in [y+offset, y-offset]:
+        for intermediate_column in range(x-offset, x+offset+1):
+            tile_list.add((intermediate_column, outer_row))
+    for outer_column in [x+offset, x-offset]:
+        for intermediate_row in range(y-offset, y+offset+1):
+            tile_list.add((outer_column, intermediate_row))
+    # Sanitize coordinates.
+    coords = sorted(set([(x, y) for (x,y) in tile_list if not (x < 0 or y < 0)
+        and not (x >= columns or y >= rows)]))
+    return coords
+
+def sensor_read(grid, x, y):
+
+    rand = random.random()
+
+    if rand <= PROB_SENSOR_TRUE:
+        return (x,y)
+
+    rows, columns = (grid[0], grid[1])
+
+    coords_L1 = matrix_get_coords_cicle(columns, rows, x, y, 1)
+    coords_L2 = matrix_get_coords_cicle(columns, rows, x, y, 2)
+
+    prob_L1 = len(coords_L1) * PROB_SENSOR_L1
+    prob_L2 = len(coords_L2) * PROB_SENSOR_L2
+
+    if rand <= PROB_SENSOR_TRUE+prob_L1:
+        return random.choice(coords_L1)
+    elif rand <= PROB_SENSOR_TRUE+prob_L1+prob_L2:
+        return random.choice(coords_L2)
+    else:
+        return (None, None)
+
 def main(args):
 
     global grid
@@ -219,19 +259,20 @@ def main(args):
     robot_pos_y = random.choice(range(0,grid_height))
     robot_heading = random.choice([N,W,S,E])
 
-    transitions = martix_get_transitions(grid, robot_pos_x, robot_pos_y,
-            robot_heading)
+    transitions = martix_get_prob_transitions(grid, robot_pos_x, robot_pos_y,
+        robot_heading)
     grid[grid_transitions] = transitions
 
     print_grid(grid, robot_pos_x, robot_pos_y, robot_heading)
-    robot_print_status(robot_pos_x, robot_pos_y, robot_heading)
-    #for _ in range(10):
-    #    robot_heading = robot_new_heading(robot_pos_x, robot_pos_y,
-    #            robot_heading)
-    #    robot_pos_x, robot_pos_y = robot_step(robot_pos_x, robot_pos_y,
-    #            robot_heading)
-    #    robot_print_status(robot_pos_x, robot_pos_y, robot_heading)
-    #robot_step()
+    for _ in range(20):
+        robot_heading = robot_new_heading(robot_pos_x, robot_pos_y,
+                robot_heading)
+        robot_pos_x, robot_pos_y = robot_step(robot_pos_x, robot_pos_y,
+                robot_heading)
+        robot_print_status(robot_pos_x, robot_pos_y, robot_heading)
+        sensor = sensor_read(grid, robot_pos_x, robot_pos_y)
+        print("SENSOR: {},{}".format(*sensor))
+        print("")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
