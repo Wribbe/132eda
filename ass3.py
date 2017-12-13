@@ -9,7 +9,7 @@ import sys
 #           4, # Num rows.
 #           4, # Num columns.
 #           [[N,W,S,E],[...]], # Wall indices matrix.
-#           [[N,W,S,E],[...]], # Heading probabilities matrix.
+#           [[N,W,S,E],[...]], # Transition probabilities matrix.
 #           [[N,W,S,E],[...]], # Sensor data values.
 #       ]
 
@@ -29,9 +29,9 @@ rep_tile = """
 # Heading enumerations.
 N=0; W=1; S=2; E=3
 # Data enumerations.
-grid_walls=2; grid_headings=3; grid_sensor=4
+grid_walls=2; grid_transitions=3; grid_sensor=4
 
-current_view = grid_headings
+current_view = grid_transitions
 #current_view = grid_sensor
 
 grid = [[]]
@@ -74,7 +74,7 @@ def grid_wall_at(x, y, heading):
 def print_clear():
     print('\n'*200)
 
-def print_grid(grid):
+def print_grid(grid, robot_x, robot_y, robot_heading):
 
     tile_width = len(rep_tile.splitlines()[0])
     tile_height = len(rep_tile.splitlines())-2
@@ -119,7 +119,18 @@ def print_grid(grid):
                 tile_val_south = tile_data[S]
                 tile_val_west = tile_data[W]
 
-                tile_status = ""
+                if index_column == robot_x and index_row == robot_y:
+                    tile_status = "R"
+                    if robot_heading == E:
+                        tile_status = tile_status+">"
+                    elif robot_heading == W:
+                        tile_status = "<"+tile_status
+                    elif robot_heading == N:
+                        tile_status = tile_status+"^"
+                    elif robot_heading == S:
+                        tile_status = tile_status+"V"
+                else:
+                    tile_status = ""
 
                 if index_body_row == body_index_north:
                     print(format_body_north.format(tile_val_north), end='')
@@ -153,11 +164,14 @@ def robot_step(x, y, heading):
 
     return new_coords(x, y, heading)
 
+PROB_FACING = 0.7
+
+def get_available_headings(x, y, heading):
+    return [h for h in [N,E,S,W] if not robot_faces_wall(x, y, h)]
+
 def robot_new_heading(x, y, heading):
-    if (robot_faces_wall(x, y, heading) or random.random() > 0.7):
-        available_headings = [h for h in [N,E,S,W] if not
-                robot_faces_wall(x, y, h)]
-        return random.choice(available_headings)
+    if (robot_faces_wall(x, y, heading) or random.random() > PROB_FACING):
+        return random.choice(get_available_headings(x, y, heading))
     return heading
 
 def robot_faces_wall(x, y, heading):
@@ -172,6 +186,26 @@ def robot_print_status(x, y, heading):
         }
     print("({0},{1}:{2}) -- x: {0}, y:{1} heading: {2}.".format(x, y, heading_string[heading]))
 
+def get_next_tile_by_heading(grid, x, y, heading):
+    new_x, new_y = robot_step(x, y, heading)
+    return grid[new_y][new_x]
+
+def martix_get_transitions(grid, x, y, heading):
+    rows, cols = (grid[0], grid[1])
+    matrix_trans = [ [[0.0]*4 for _ in range(cols) ] for _ in range(rows)]
+    available_headings = get_available_headings(x, y, heading)
+    prob_left = 1.0
+    # See if the current heading is available.
+    if heading in available_headings:
+        prob_left -= PROB_FACING
+        get_next_tile_by_heading(matrix_trans, x, y, heading)[heading] = PROB_FACING
+        available_headings.remove(heading)
+    # Split remaining probability among the other possible headings.
+    prob_split = prob_left / len(available_headings)
+    for h in available_headings:
+        get_next_tile_by_heading(matrix_trans, x, y, h)[h] = prob_split
+    return matrix_trans
+
 def main(args):
 
     global grid
@@ -185,13 +219,18 @@ def main(args):
     robot_pos_y = random.choice(range(0,grid_height))
     robot_heading = random.choice([N,W,S,E])
 
-    print_grid(grid)
-    for _ in range(10):
-        robot_heading = robot_new_heading(robot_pos_x, robot_pos_y,
-                robot_heading)
-        robot_pos_x, robot_pos_y = robot_step(robot_pos_x, robot_pos_y,
-                robot_heading)
-        robot_print_status(robot_pos_x, robot_pos_y, robot_heading)
+    transitions = martix_get_transitions(grid, robot_pos_x, robot_pos_y,
+            robot_heading)
+    grid[grid_transitions] = transitions
+
+    print_grid(grid, robot_pos_x, robot_pos_y, robot_heading)
+    robot_print_status(robot_pos_x, robot_pos_y, robot_heading)
+    #for _ in range(10):
+    #    robot_heading = robot_new_heading(robot_pos_x, robot_pos_y,
+    #            robot_heading)
+    #    robot_pos_x, robot_pos_y = robot_step(robot_pos_x, robot_pos_y,
+    #            robot_heading)
+    #    robot_print_status(robot_pos_x, robot_pos_y, robot_heading)
     #robot_step()
 
 if __name__ == "__main__":
