@@ -10,7 +10,8 @@ import sys
 #           4, # Num columns.
 #           [[N,W,S,E],[...]], # Wall indices matrix.
 #           [[N,W,S,E],[...]], # Transition probabilities matrix.
-#           [[N,W,S,E],[...]], # Sensor data values.
+#           [[N,"","",""],[...]], # Sensor read probabilities.
+#           [[N,"","",""],[...]], # Belief state (positional probabilities).
 #       ]
 
 
@@ -29,10 +30,11 @@ rep_tile = """
 # Heading enumerations.
 N=0; W=1; S=2; E=3
 # Data enumerations.
-grid_walls=2; grid_transitions=3; grid_sensor=4
+grid_walls=2; grid_transitions=3; grid_sensor=4; grid_belief=5
 
 current_view = grid_transitions
-#current_view = grid_sensor
+current_view = grid_sensor
+current_view = grid_belief
 
 grid = [[]]
 
@@ -43,6 +45,8 @@ def grid_get(rows, columns):
 
     grid_heading_probablities = [[[0.0]*4]*columns for _ in range(rows)]
     grid_sensor_values = [[[0.0]+[""]*3]*columns for _ in range(rows)]
+    grid_belief_state = [[[1.0/(rows*columns)]+[""]*3]*columns for _ in
+            range(rows)]
 
     for index_row in range(rows):
         grid_wall_matrix_row = []
@@ -65,6 +69,8 @@ def grid_get(rows, columns):
     grid.append(grid_heading_probablities)
     # Add sensor values.
     grid.append(grid_sensor_values)
+    # Add belief state.
+    grid.append(grid_belief_state)
 
     return grid
 
@@ -195,9 +201,12 @@ def get_next_tile_by_heading(grid, x, y, heading):
     new_x, new_y = robot_step(x, y, heading)
     return grid[new_y][new_x]
 
+def matrix_empty(rows, cols, val=0.0):
+    return [ [[val]*4 for _ in range(cols) ] for _ in range(rows)]
+
 def martix_get_prob_transitions(grid, x, y, heading):
     rows, cols = (grid[0], grid[1])
-    matrix_trans = [ [[0.0]*4 for _ in range(cols) ] for _ in range(rows)]
+    matrix_trans = matrix_empty(rows, cols)
     available_headings = get_available_headings(x, y, heading)
     prob_left = 1.0
     # See if the current heading is available.
@@ -223,6 +232,26 @@ def matrix_get_coords_cicle(columns, rows, x, y, offset):
     coords = sorted(set([(x, y) for (x,y) in tile_list if not (x < 0 or y < 0)
         and not (x >= columns or y >= rows)]))
     return coords
+
+def matrix_get_prob_sensor(grid, x, y):
+
+    rows, columns = (grid[0], grid[1])
+    matrix_sensor = [ [ [0.0, "", "", ""] for _ in range(columns) ] for _
+            in range(rows) ]
+
+    coords_L1 = matrix_get_coords_cicle(columns, rows, x, y, 1)
+    coords_L2 = matrix_get_coords_cicle(columns, rows, x, y, 2)
+
+    matrix_sensor[y][x][N] = PROB_SENSOR_TRUE
+
+    for x, y in coords_L1:
+        matrix_sensor[y][x][N] = PROB_SENSOR_L1
+
+    for x, y in coords_L2:
+        matrix_sensor[y][x][N] = PROB_SENSOR_L2
+
+    return matrix_sensor
+
 
 def sensor_read(grid, x, y):
 
@@ -259,9 +288,12 @@ def main(args):
     robot_pos_y = random.choice(range(0,grid_height))
     robot_heading = random.choice([N,W,S,E])
 
-    transitions = martix_get_prob_transitions(grid, robot_pos_x, robot_pos_y,
+    prob_transitions = martix_get_prob_transitions(grid, robot_pos_x, robot_pos_y,
         robot_heading)
-    grid[grid_transitions] = transitions
+    grid[grid_transitions] = prob_transitions
+
+    prob_sensor = matrix_get_prob_sensor(grid, robot_pos_x, robot_pos_y)
+    grid[grid_sensor] = prob_sensor
 
     print_grid(grid, robot_pos_x, robot_pos_y, robot_heading)
     for _ in range(20):
